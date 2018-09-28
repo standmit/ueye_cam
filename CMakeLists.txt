@@ -26,6 +26,7 @@ find_package(catkin REQUIRED COMPONENTS
   sensor_msgs
   camera_calibration_parsers
   camera_info_manager
+  trigger_sync
   )
 catkin_destinations() # define ${CATKIN_PACKAGE_SHARE_DESTINATION}
 

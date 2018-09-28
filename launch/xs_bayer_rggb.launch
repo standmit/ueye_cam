@@ -58,5 +58,7 @@
     
     <param name="flip_upd" type="bool" value="False" />
     <param name="flip_lr"  type="bool" value="False" />
+
+    <param name="use_trigger_sync" type="bool" value="False" />
   </node>
 </launch>

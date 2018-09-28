@@ -58,6 +58,7 @@
 #include <ueye_cam/UEyeCamConfig.h>
 #include <boost/thread/mutex.hpp>
 #include <ueye_cam/ueye_cam_driver.hpp>
+#include "trigger_sync/trigger_sync.h"
 
 
 namespace ueye_cam {
@@ -80,12 +81,15 @@ public:
   constexpr static double DEFAULT_FRAME_RATE = 10.0;
   constexpr static int DEFAULT_PIXEL_CLOCK = 25;
   constexpr static int DEFAULT_FLASH_DURATION = 1000;
+  constexpr static bool DEFAULT_USE_TRIGGER_SYNC = false;
 
   const static std::string DEFAULT_FRAME_NAME;
   const static std::string DEFAULT_CAMERA_NAME;
   const static std::string DEFAULT_CAMERA_TOPIC;
   const static std::string DEFAULT_TIMEOUT_TOPIC;
   const static std::string DEFAULT_COLOR_MODE;
+  const static std::string DEFAULT_SHUTTER_EVENT_NAME;
+  const static std::string DEFAULT_LOCAL_CLOCK_ID;
 
 
   UEyeCamNodelet();
@@ -201,6 +205,11 @@ protected:
   std::string cam_intr_filename_;
   std::string cam_params_filename_; // should be valid UEye INI file
   ueye_cam::UEyeCamConfig cam_params_;
+
+  bool use_trigger_sync_;
+  std::string shutter_event_name_; // for use in trigger_sync
+  std::string local_clock_id_;
+  TriggerSync* shutter_sync;
 
   ros::Time init_ros_time_; // for processing frames
   uint64_t init_clock_tick_;

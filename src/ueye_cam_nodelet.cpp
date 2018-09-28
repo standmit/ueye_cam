@@ -69,6 +69,8 @@ const std::string UEyeCamNodelet::DEFAULT_CAMERA_NAME = "camera";
 const std::string UEyeCamNodelet::DEFAULT_CAMERA_TOPIC = "image_raw";
 const std::string UEyeCamNodelet::DEFAULT_TIMEOUT_TOPIC = "timeout_count";
 const std::string UEyeCamNodelet::DEFAULT_COLOR_MODE = "";
+const std::string UEyeCamNodelet::DEFAULT_SHUTTER_EVENT_NAME = "shutter";
+const std::string UEyeCamNodelet::DEFAULT_LOCAL_CLOCK_ID = "local_clock";
 constexpr int UEyeCamDriver::ANY_CAMERA; // Needed since CMakeLists.txt creates 2 separate libraries: one for non-ROS parent class, and one for ROS child class
 
 
@@ -85,6 +87,10 @@ UEyeCamNodelet::UEyeCamNodelet():
     timeout_topic_(DEFAULT_TIMEOUT_TOPIC),
     cam_intr_filename_(""),
     cam_params_filename_(""),
+    use_trigger_sync_(DEFAULT_USE_TRIGGER_SYNC),
+    shutter_event_name_(DEFAULT_SHUTTER_EVENT_NAME),
+    local_clock_id_(DEFAULT_LOCAL_CLOCK_ID),
+    shutter_sync(NULL),
     init_clock_tick_(0),
     init_publish_time_(0),
     prev_output_frame_idx_(0) {
@@ -146,10 +152,19 @@ void UEyeCamNodelet::onInit() {
   local_nh.param<string>("camera_intrinsics_file", cam_intr_filename_, "");
   local_nh.param<int>("camera_id", cam_id_, ANY_CAMERA);
   local_nh.param<string>("camera_parameters_file", cam_params_filename_, "");
+  local_nh.param<bool>("use_trigger_sync", this->use_trigger_sync_, false);
+  if (this->use_trigger_sync_) {
+    local_nh.param<string>("shutter_event_name", this->shutter_event_name_, DEFAULT_SHUTTER_EVENT_NAME);
+    local_nh.param<string>("local_clock_id", this->local_clock_id_, DEFAULT_LOCAL_CLOCK_ID);
+  }
   if (cam_id_ < 0) {
     WARN_STREAM("Invalid camera ID specified: " << cam_id_ <<
       "; setting to ANY_CAMERA");
     cam_id_ = ANY_CAMERA;
+  }
+
+  if (this->use_trigger_sync_) {
+    this->shutter_sync = new TriggerSync(this->cam_name_, this->local_clock_id_, this->shutter_event_name_);
   }
 
   loadIntrinsicsFile();
@@ -501,6 +516,11 @@ INT UEyeCamNodelet::parseROSParams(ros::NodeHandle& local_nh) {
     }
     if (cam_params_.auto_frame_rate) { // Auto frame rate has precedence over auto gain
       cam_params_.auto_gain = false;
+    }
+  
+    if (this->use_trigger_sync_ && this->cam_params_.auto_exposure) {
+        this->cam_params_.auto_exposure = false;
+        ROS_ERROR("Auto Exposure is unavailable when TriggerSync is used!");
     }
 
     // Configure camera sensor parameters
@@ -991,7 +1011,17 @@ void UEyeCamNodelet::frameGrabLoop() {
             if (abs((ros::Time::now() - init_ros_time_).toSec()) > abs((ros::Time::now() - (init_ros_time_-ros::Duration(3600,0))).toSec())) { init_ros_time_ -= ros::Duration(3600,0); }
           }
         }
-        img_msg_ptr->header.stamp = cam_info_msg_ptr->header.stamp = getImageTickTimestamp();
+          
+        if (this->use_trigger_sync_) {
+            uint64_t tick;
+            if (getClockTick(&tick)) {
+                img_msg_ptr->header.stamp = cam_info_msg_ptr->header.stamp = this->shutter_sync->update(ros::Time((double)tick / 10.0 - this->cam_params_.exposure * 1000 + this->cam_params_.flash_delay), this->getImageTimestamp(), this->shutter_event_name_);
+            } else {
+                img_msg_ptr->header.stamp = cam_info_msg_ptr->header.stamp = getImageTickTimestamp();
+            }
+        } else {
+            img_msg_ptr->header.stamp = cam_info_msg_ptr->header.stamp = getImageTickTimestamp();
+        }
 
         // Process new frame
 #ifdef DEBUG_PRINTOUT_FRAME_GRAB_RATES

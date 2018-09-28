@@ -52,5 +52,9 @@
     <param name="frame_rate" type="double" value="30.0" />
     <param name="output_rate" type="double" value="0.0" /> <!-- >0: throttle rate for publishing frames -->
     <param name="pixel_clock" type="int" value="25" />
+
+    <param name="use_trigger_sync" type="bool" value="True" />
+    <param name="shutter_event_name" type="str" value="shutter" />
+    <param name="local_clock_id" type="str" value="local_clock" />
   </node>
 </launch>
