@@ -70,7 +70,7 @@ set(UEYECAM_NODELET_HEADERS
 )
 
 generate_dynamic_reconfigure_options(
-  cfg/UEyeCam.cfg
+  config/UEyeCam.cfg
   )
 
 catkin_package(
