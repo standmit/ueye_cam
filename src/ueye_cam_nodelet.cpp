@@ -172,6 +172,13 @@ void UEyeCamNodelet::onInit() {
   ReconfigureServer::CallbackType f;
   f = bind(&UEyeCamNodelet::configCallback, this, _1, _2);
   ros_cfg_->setCallback(f); // this will call configCallback, which will configure the camera's parameters
+
+  // HACK, HACK, HACK Begin
+  // This deactivates openmp on the debayering
+  UINT nEnabled = IS_CONFIG_OPEN_MP_DISABLE;
+  is_Configuration(IS_CONFIG_OPEN_MP_CMD_SET_ENABLE, (void*)&nEnabled, sizeof(nEnabled));
+  // HACK, HACK, HACK END
+
   startFrameGrabber();
   INFO_STREAM(
       "UEye camera [" << cam_name_ << "] initialized on topic " << ros_cam_pub_.getTopic() << endl <<
