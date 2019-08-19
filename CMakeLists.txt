@@ -16,7 +16,7 @@ else()
     message(FATAL_ERROR "The compiler ${CMAKE_CXX_COMPILER} has no C++11 support. Please use a different C++ compiler.")
 endif()
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -g")
 
 find_package(catkin REQUIRED COMPONENTS
   roscpp
@@ -32,23 +32,10 @@ catkin_destinations() # define ${CATKIN_PACKAGE_SHARE_DESTINATION}
 
 #set(UEYE_LIBRARY_PATH /usr/lib)
 find_library(UEYE_LIBRARY ueye_api)
-set(USE_UNOFFICIAL_UEYE_DRIVERS FALSE)
 if(NOT UEYE_LIBRARY)
-  message(STATUS "libueye_api was not found in system's library path")
-  #include(cmake_modules/DownloadUEyeDrivers.cmake)
-  include(cmake_modules/DownloadUEyeDriversUnofficial.cmake)
-  set(UEYE_DRIVER_DIR ${CATKIN_DEVEL_PREFIX}/${CATKIN_PACKAGE_SHARE_DESTINATION})
-  if(UEYE_DRIVER_DIR)
-    message(STATUS "Setting UEYE_DRIVER_DIR to: ${UEYE_DRIVER_DIR}")
-  else()
-    set(UEYE_DRIVER_DIR ${CMAKE_CURRENT_BINARY_DIR})
-    message(STATUS "Failed to set UEYE_DRIVER_DIR to: CATKIN_DEVEL_PREFIX/CATKIN_PACKAGE_SHARE_DESTINATION, defaulting to CMAKE_CURRENT_BINARY_DIR: ${UEYE_DRIVER_DIR}")
-  endif()
-  download_ueye_drivers(UEYE_LIBRARY UEYE_INCLUDE_DIR ${UEYE_DRIVER_DIR})
-  message(STATUS "libueye_api library: ${UEYE_LIBRARY}")
-  message(STATUS "libueye_api include: ${UEYE_INCLUDE_DIR}")
-  set(USE_UNOFFICIAL_UEYE_DRIVERS TRUE)
+  message(FATAL_ERROR "libueye_api was not found in system's library path")
 endif()
+message(STATUS "libueye_api library: ${UEYE_LIBRARY}")
 
 set(UEYECAM_NODELET_NAME ueye_cam_nodelet)
 set(UEYECAM_LIB_NAME ueye_wrapper)
@@ -71,7 +58,7 @@ set(UEYECAM_NODELET_HEADERS
 )
 
 generate_dynamic_reconfigure_options(
-  cfg/UEyeCam.cfg
+  config/UEyeCam.cfg
   )
 
 catkin_package(
@@ -84,8 +71,7 @@ include_directories(
   include
   ${catkin_INCLUDE_DIRS}
   ${UEYE_INCLUDE_DIR}
-  )
-
+)
 
 add_library(${UEYECAM_LIB_NAME} ${UEYECAM_LIB_SOURCES} ${UEYECAM_LIB_HEADERS})
 target_link_libraries(${UEYECAM_LIB_NAME} ${catkin_LIBRARIES} ${UEYE_LIBRARY})
@@ -93,9 +79,6 @@ target_link_libraries(${UEYECAM_LIB_NAME} ${catkin_LIBRARIES} ${UEYE_LIBRARY})
 add_library(${UEYECAM_NODELET_NAME} ${UEYECAM_NODELET_SOURCES} ${UEYECAM_NODELET_HEADERS})
 target_link_libraries(${UEYECAM_NODELET_NAME} ${catkin_LIBRARIES} ${UEYECAM_LIB_NAME})
 add_dependencies(${UEYECAM_NODELET_NAME} ${PROJECT_NAME}_gencfg)
-
-add_executable(check_ueye_api src/check_ueye_api.cpp)
-target_link_libraries(check_ueye_api ${catkin_LIBRARIES} ${UEYECAM_LIB_NAME})
 
 # Do not package the barebones IDS drivers, since they will mask over the official drivers (when present)
 #if(USE_UNOFFICIAL_UEYE_DRIVERS)
@@ -110,12 +93,6 @@ install(DIRECTORY include/${PROJECT_NAME}/
   FILES_MATCHING PATTERN "*.h"
   PATTERN ".svn" EXCLUDE
 )
-
-install(TARGETS ${UEYECAM_LIB_NAME} ${UEYECAM_NODELET_NAME} check_ueye_api
-  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-  )
 
 install(FILES nodelet_plugins.xml
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
